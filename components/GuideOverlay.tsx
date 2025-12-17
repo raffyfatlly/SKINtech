@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ScanBarcode, LayoutGrid, ArrowDown, User } from 'lucide-react';
+import { ScanBarcode, LayoutGrid, ArrowDown, User, Sparkles } from 'lucide-react';
 
 interface GuideOverlayProps {
   step: 'ANALYSIS' | 'SCAN' | 'SHELF' | null;
@@ -15,27 +15,24 @@ const GuideOverlay: React.FC<GuideOverlayProps> = ({ step, onDismiss, onNext }) 
   const isScan = step === 'SCAN';
   // If not analysis or scan, it is SHELF
 
-  // Positioning logic
-  // Left Button (Analysis) : -88px
-  // Center Button (Scan) : 0px
-  // Right Button (Shelf) : 88px
+  // Positioning logic (relative to the floating nav buttons)
   const translateX = isAnalysis ? '-88px' : isScan ? '0px' : '88px';
 
   const getContent = () => {
       if (isAnalysis) return {
           icon: <User size={16} />,
           title: "Skin Analysis",
-          desc: "View your skin health metrics."
+          desc: "View your full clinical breakdown."
       };
       if (isScan) return {
           icon: <ScanBarcode size={16} />,
           title: "Scan Product",
-          desc: "Check product compatibility."
+          desc: "Check if products match your skin."
       };
       return {
           icon: <LayoutGrid size={16} />,
           title: "Smart Shelf",
-          desc: "Manage routine & detect conflicts."
+          desc: "Manage your routine & conflicts."
       };
   }
 
@@ -43,43 +40,55 @@ const GuideOverlay: React.FC<GuideOverlayProps> = ({ step, onDismiss, onNext }) 
 
   return (
     <div 
-        className="fixed inset-0 z-30 flex flex-col justify-end pb-32 pointer-events-auto" 
-        onClick={onDismiss}
+        className="fixed inset-0 z-50 flex flex-col justify-end pb-32 pointer-events-none" 
     >
-      {/* Darken background slightly to focus attention */}
-      <div className="absolute inset-0 bg-black/20 transition-opacity duration-1000 animate-in fade-in" />
+      {/* Backdrop - Clickable to dismiss */}
+      <div 
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-700 animate-in fade-in pointer-events-auto" 
+        onClick={onDismiss}
+      />
 
       <div 
         className="relative w-full flex justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
         style={{ transform: `translateX(${translateX})` }}
       >
         <div 
-            className="flex flex-col items-center max-w-[155px] text-center animate-in slide-in-from-bottom-4 fade-in duration-700 cursor-pointer active:scale-95 transition-transform"
+            className="flex flex-col items-center max-w-[180px] text-center pointer-events-auto cursor-pointer active:scale-95 transition-transform"
             onClick={(e) => {
                 e.stopPropagation();
                 onNext();
             }}
         >
             
-            {/* Text Bubble */}
-            <div className="bg-white/95 backdrop-blur-xl p-3.5 rounded-2xl shadow-xl border border-white/40 mb-3 relative group hover:border-teal-200 transition-colors">
-                <div className="flex items-center justify-center gap-2 mb-1.5 text-teal-600">
+            {/* The "Bubble" */}
+            <div className="bg-white rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-teal-100 mb-4 relative animate-in zoom-in-50 slide-in-from-bottom-8 duration-500 ease-out group">
+                <div className="flex items-center justify-center w-10 h-10 bg-teal-50 rounded-full mx-auto mb-3 text-teal-600 shadow-inner border border-teal-100 group-hover:scale-110 transition-transform">
                     {content.icon}
                 </div>
-                <h4 className="text-xs font-bold text-zinc-900 leading-tight mb-1">
-                    {content.title}
-                </h4>
-                <p className="text-[10px] text-zinc-500 font-medium leading-relaxed">
+                
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <Sparkles size={10} className="text-teal-500 fill-teal-500" />
+                    <h4 className="text-[13px] font-black text-zinc-900 tracking-tight leading-none uppercase">
+                        {content.title}
+                    </h4>
+                </div>
+                
+                <p className="text-[11px] text-zinc-500 font-medium leading-relaxed">
                     {content.desc}
                 </p>
-                <div className="mt-2 text-[8px] font-bold uppercase tracking-widest text-teal-600">Next</div>
+                
+                <div className="mt-3 py-1.5 px-3 bg-zinc-900 rounded-full inline-block">
+                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white">Got it</span>
+                </div>
 
-                {/* Triangle Pointer */}
-                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white/95 rotate-45 border-b border-r border-white/40 group-hover:border-teal-200"></div>
+                {/* Triangle Pointer (The "Tail") */}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-b border-r border-teal-100"></div>
             </div>
 
-            {/* Bouncing Arrow */}
-            <ArrowDown className="text-white drop-shadow-md animate-bounce" size={20} />
+            {/* Pulsing Arrow */}
+            <div className="animate-bounce">
+                <ArrowDown className="text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]" size={24} strokeWidth={3} />
+            </div>
             
         </div>
       </div>
