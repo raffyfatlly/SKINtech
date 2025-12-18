@@ -79,6 +79,7 @@ export interface Product {
   id: string;
   name: string;
   brand?: string;
+  imageUrl?: string;
   ingredients: string[];
   dateScanned: number;
   risks: IngredientRisk[];

@@ -95,23 +95,24 @@ export const analyzeProductFromSearch = async (productName: string, userMetrics:
         TASK: Identify and provide a DEEP HOLISTIC ANALYSIS for "${productName}" by "${knownBrand || "Unknown"}".
         
         1. GROUNDING: Use Google Search to find high-authority INCI data (e.g. INCIDecoder style).
-        2. PERSONALIZATION: Compare active ingredients against this user profile: ${JSON.stringify(userMetrics)}.
-        3. SAFETY: Check for Comedogenic ratings, Fungal Acne triggers, and Allergens.
+        2. IMAGE: Locate a high-quality product image URL (preferably with a white background) from official retailer sites (Watsons, Sephora, Guardian).
+        3. PERSONALIZATION: Compare active ingredients against this user profile: ${JSON.stringify(userMetrics)}.
         
         OUTPUT FORMAT (STRICT JSON):
         {
             "name": "Full Product Name",
             "brand": "Brand",
+            "imageUrl": "string (URL to high-res product shot)",
             "type": "MOISTURIZER" | "SERUM" | "CLEANSER" | etc.,
             "ingredients": ["string"],
             "estimatedPrice": Number (MYR),
             "suitabilityScore": Number (0-99),
             "risks": [{ "ingredient": "Name", "riskLevel": "HIGH", "reason": "Why" }],
             "benefits": [{ "ingredient": "Name", "target": "MetricKey", "description": "Why" }],
-            "pros": ["string (Detailed positive for THIS user)"],
-            "cons": ["string (Specific warning for THIS user)"],
-            "scientificVerdict": "string (2-3 sentences holistic summary)",
-            "usageAdvice": "string (e.g. Best for PM, avoid with vitamin C)"
+            "pros": ["string"],
+            "cons": ["string"],
+            "scientificVerdict": "string",
+            "usageAdvice": "string"
         }
         `;
 
@@ -135,6 +136,7 @@ export const analyzeProductFromSearch = async (productName: string, userMetrics:
             id: Date.now().toString(),
             name: data.name || productName,
             brand: data.brand || knownBrand || "Unknown",
+            imageUrl: data.imageUrl,
             type: data.type || "UNKNOWN",
             ingredients: data.ingredients || [],
             estimatedPrice: data.estimatedPrice || 0,
@@ -157,28 +159,23 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
         const prompt = `
         TASK:
         1. IDENTIFY: Scan the provided image.
-        2. SEARCH: Use Google Search to cross-reference INCI data and current MYR pricing.
+        2. SEARCH: Use Google Search to cross-reference INCI data, current MYR pricing, and locate a HIGH-QUALITY canonical product image URL (white background preferred).
         3. DEEP ANALYSIS: Perform a HOLISTIC suitablity check for this specific user: ${JSON.stringify(userMetrics)}.
-        
-        CRITERIA FOR DEEP ANALYSIS:
-        - Map active ingredients to user's LOWEST metric scores.
-        - Analyze for Fungal Acne triggers if user is oily/acne-prone.
-        - Check for high-comedogenic ingredients (ratings 3-5).
-        - Provide usage advice based on their current skin state.
 
         OUTPUT FORMAT (STRICT JSON):
         {
             "name": "string",
             "brand": "string",
+            "imageUrl": "string (High-res URL)",
             "type": "MOISTURIZER" | "SERUM" | "CLEANSER" | etc.,
             "ingredients": ["string"],
             "estimatedPrice": Number (MYR),
             "suitabilityScore": Number (0-99),
-            "risks": [{ "ingredient": "Name", "riskLevel": "HIGH"|"MEDIUM", "reason": "Why" }],
+            "risks": [{ "ingredient": "Name", "riskLevel": "HIGH", "reason": "Why" }],
             "benefits": [{ "ingredient": "Name", "target": "MetricKey", "description": "Why" }],
             "pros": ["string"],
             "cons": ["string"],
-            "scientificVerdict": "string (2-3 sentences)",
+            "scientificVerdict": "string",
             "usageAdvice": "string"
         }
         `;
@@ -213,6 +210,7 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
             id: Date.now().toString(),
             name: data.name,
             brand: data.brand || "Unknown",
+            imageUrl: data.imageUrl,
             type: data.type || "UNKNOWN",
             ingredients: data.ingredients || [],
             estimatedPrice: data.estimatedPrice || 0,
