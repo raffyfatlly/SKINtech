@@ -88,6 +88,11 @@ export interface Product {
   sourceUrls?: { title: string; uri: string }[];
   type: 'CLEANSER' | 'TONER' | 'SERUM' | 'MOISTURIZER' | 'SPF' | 'TREATMENT' | 
         'FOUNDATION' | 'CONCEALER' | 'POWDER' | 'PRIMER' | 'SETTING_SPRAY' | 'BLUSH' | 'BRONZER' | 'UNKNOWN';
+  // Deep Analysis Fields
+  pros?: string[];
+  cons?: string[];
+  scientificVerdict?: string;
+  usageAdvice?: string;
 }
 
 export interface ShelfConflict {

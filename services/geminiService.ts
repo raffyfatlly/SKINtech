@@ -92,10 +92,27 @@ export const analyzeFaceSkin = async (image: string, localMetrics: SkinMetrics, 
 export const analyzeProductFromSearch = async (productName: string, userMetrics: SkinMetrics, consistencyScore?: number, knownBrand?: string): Promise<Product> => {
     return runWithRetry<Product>(async (ai) => {
         const prompt = `
-        Identify and analyze "${productName}" by "${knownBrand || "Unknown"}".
-        USE GOOGLE SEARCH to find the EXACT ingredients and current pricing in Malaysia (MYR).
-        User metrics: ${JSON.stringify(userMetrics)}.
-        OUTPUT: Strict JSON matching the Product type.
+        TASK: Identify and provide a DEEP HOLISTIC ANALYSIS for "${productName}" by "${knownBrand || "Unknown"}".
+        
+        1. GROUNDING: Use Google Search to find high-authority INCI data (e.g. INCIDecoder style).
+        2. PERSONALIZATION: Compare active ingredients against this user profile: ${JSON.stringify(userMetrics)}.
+        3. SAFETY: Check for Comedogenic ratings, Fungal Acne triggers, and Allergens.
+        
+        OUTPUT FORMAT (STRICT JSON):
+        {
+            "name": "Full Product Name",
+            "brand": "Brand",
+            "type": "MOISTURIZER" | "SERUM" | "CLEANSER" | etc.,
+            "ingredients": ["string"],
+            "estimatedPrice": Number (MYR),
+            "suitabilityScore": Number (0-99),
+            "risks": [{ "ingredient": "Name", "riskLevel": "HIGH", "reason": "Why" }],
+            "benefits": [{ "ingredient": "Name", "target": "MetricKey", "description": "Why" }],
+            "pros": ["string (Detailed positive for THIS user)"],
+            "cons": ["string (Specific warning for THIS user)"],
+            "scientificVerdict": "string (2-3 sentences holistic summary)",
+            "usageAdvice": "string (e.g. Best for PM, avoid with vitamin C)"
+        }
         `;
 
         const response = await ai.models.generateContent({
@@ -124,40 +141,46 @@ export const analyzeProductFromSearch = async (productName: string, userMetrics:
             suitabilityScore: data.suitabilityScore || 50,
             risks: data.risks || [],
             benefits: data.benefits || [],
+            pros: data.pros || [],
+            cons: data.cons || [],
+            scientificVerdict: data.scientificVerdict || "",
+            usageAdvice: data.usageAdvice || "",
             sourceUrls,
             dateScanned: Date.now()
         };
     }); 
 };
 
-/**
- * GROUNDED PRODUCT VISION PIPELINE
- * Identifies from image, verifies with Google Search for accurate data/pricing.
- */
 export const analyzeProductImage = async (base64: string, userMetrics: SkinMetrics): Promise<Product> => {
     return runWithRetry<Product>(async (ai) => {
         
         const prompt = `
         TASK:
-        1. IDENTIFY: Scan the provided image. Identify the BRAND and PRODUCT NAME.
-        2. VERIFY & GROUND: Use Google Search to find this EXACT product's CURRENT formulation and real-world pricing in MALAYSIA (MYR) from stores like Watsons, Guardian, or Sephora.
-        3. ANALYZE: Calculate a suitability score (0-99) for this user profile: ${JSON.stringify(userMetrics)}.
+        1. IDENTIFY: Scan the provided image.
+        2. SEARCH: Use Google Search to cross-reference INCI data and current MYR pricing.
+        3. DEEP ANALYSIS: Perform a HOLISTIC suitablity check for this specific user: ${JSON.stringify(userMetrics)}.
         
-        IF PRICING VARIES: Use the most common price found in Watsons MY or Shopee Mall MY.
+        CRITERIA FOR DEEP ANALYSIS:
+        - Map active ingredients to user's LOWEST metric scores.
+        - Analyze for Fungal Acne triggers if user is oily/acne-prone.
+        - Check for high-comedogenic ingredients (ratings 3-5).
+        - Provide usage advice based on their current skin state.
 
         OUTPUT FORMAT (STRICT JSON):
         {
-            "name": "string (Exact Full Product Name)",
+            "name": "string",
             "brand": "string",
-            "type": "CLEANSER" | "TONER" | "SERUM" | "MOISTURIZER" | "SPF" | "TREATMENT" | "FOUNDATION" | "OTHER",
+            "type": "MOISTURIZER" | "SERUM" | "CLEANSER" | etc.,
             "ingredients": ["string"],
-            "estimatedPrice": Number (Price in MYR),
-            "suitabilityScore": Number,
+            "estimatedPrice": Number (MYR),
+            "suitabilityScore": Number (0-99),
             "risks": [{ "ingredient": "Name", "riskLevel": "HIGH"|"MEDIUM", "reason": "Why" }],
-            "benefits": [{ "ingredient": "Name", "target": "MetricKey", "description": "Why", "relevance": "HIGH"|"MAINTENANCE" }]
+            "benefits": [{ "ingredient": "Name", "target": "MetricKey", "description": "Why" }],
+            "pros": ["string"],
+            "cons": ["string"],
+            "scientificVerdict": "string (2-3 sentences)",
+            "usageAdvice": "string"
         }
-        
-        If identification is 100% impossible, return {"name": "Identification Failed"}.
         `;
 
         const response = await ai.models.generateContent({
@@ -177,10 +200,9 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
 
         const data = parseJSONFromText(response.text || "{}");
         if (!data || data.name === "Identification Failed") {
-            throw new Error("Label not recognized. Ensure the product name is centered and well-lit.");
+            throw new Error("Label not recognized. Ensure the product name is centered.");
         }
 
-        // Extract Search Grounding Links
         const grounding = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
         const sourceUrls = grounding?.map((c: any) => ({ 
             title: c.web?.title || "Verification Link", 
@@ -197,6 +219,10 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
             suitabilityScore: data.suitabilityScore || 50,
             risks: data.risks || [],
             benefits: data.benefits || [],
+            pros: data.pros || [],
+            cons: data.cons || [],
+            scientificVerdict: data.scientificVerdict || "",
+            usageAdvice: data.usageAdvice || "",
             sourceUrls,
             dateScanned: Date.now()
         };
