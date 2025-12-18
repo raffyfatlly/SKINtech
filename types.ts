@@ -85,6 +85,7 @@ export interface Product {
   benefits: Benefit[];
   suitabilityScore: number; // 0-100
   estimatedPrice?: number; // USD
+  sourceUrls?: { title: string; uri: string }[];
   type: 'CLEANSER' | 'TONER' | 'SERUM' | 'MOISTURIZER' | 'SPF' | 'TREATMENT' | 
         'FOUNDATION' | 'CONCEALER' | 'POWDER' | 'PRIMER' | 'SETTING_SPRAY' | 'BLUSH' | 'BRONZER' | 'UNKNOWN';
 }
