@@ -167,7 +167,6 @@ const BuyingAssistant: React.FC<BuyingAssistantProps> = ({ product, user, shelf,
                  )}
 
                  {/* MAIN CONTENT (Blurred if Locked) */}
-                 {/* UPDATE: Reduced blur to sm (4px), increased opacity to 100, removed grayscale so visuals pop */}
                  <div className={`space-y-4 transition-all duration-700 ${!isUnlocked ? 'filter blur-sm opacity-100 pointer-events-none select-none' : ''}`}>
                     {/* CRITICAL ALERTS - If none, we show a "Safe" card to blur so it looks populated */}
                     {(audit.warnings.length > 0 || !isUnlocked) ? (
@@ -238,7 +237,9 @@ const BuyingAssistant: React.FC<BuyingAssistantProps> = ({ product, user, shelf,
                                     { target: 'hydration', ingredient: 'Hyaluronic Acid', description: 'Deeply hydrates skin layers.' },
                                     { target: 'redness', ingredient: 'Centella Asiatica', description: 'Calms inflammation.' }
                                 ] as any[]).map((b, i) => {
-                                    const metricScore = user.biometrics[b.target as keyof typeof user.biometrics] || 0;
+                                    // Fix: Ensure metricScore is a number before comparison to avoid type error
+                                    const rawMetricValue = user.biometrics[b.target as keyof typeof user.biometrics];
+                                    const metricScore = typeof rawMetricValue === 'number' ? rawMetricValue : 0;
                                     const isTargeted = metricScore < 60;
                                     
                                     return (
@@ -261,7 +262,7 @@ const BuyingAssistant: React.FC<BuyingAssistantProps> = ({ product, user, shelf,
                             </div>
                         </div>
                     )}
-                </div>
+                 </div>
             </div>
         </div>
 

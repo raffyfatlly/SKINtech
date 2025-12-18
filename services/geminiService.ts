@@ -205,37 +205,38 @@ export const analyzeProductFromSearch = async (productName: string, userMetrics:
 };
 
 /**
- * INTELLIGENT PRODUCT VISION PIPELINE (UPDATED V3)
- * 1. Vision: Loose identification of text, logos, packaging clues AND Visual Context.
- * 2. Authority Check: Gemini Cross-Reference with Variation Handling.
+ * INTELLIGENT PRODUCT VISION PIPELINE (ROBUSTNESS REVISION)
+ * 1. Deep Text & Context Extraction: Identifies brand, variant, sub-lines, and size.
+ * 2. Canonical Normalization: Maps noisy visual data to the EXACT commercial product.
  */
 export const analyzeProductImage = async (base64: string, userMetrics: SkinMetrics): Promise<Product> => {
     return runWithRetry<Product>(async (ai) => {
         
-        // STEP 1: VISION RECOGNITION (LOOSE & DESCRIPTIVE)
+        // STEP 1: ULTRA-ROBUST VISION IDENTIFICATION
         const visionPrompt = `
-        Analyze this skincare product image. 
+        ACT AS A PROFESSIONAL SKINCARE SCANNER. ANALYZE THIS IMAGE WITH 100% FOCUS ON TEXT AND BRAND IDENTITY.
         
-        PHASE 1: VISUAL IDENTIFICATION
-        - Look at the LOGO, COLOR SCHEME, BOTTLE SHAPE, and VISIBLE TEXT.
-        - Even if text is blurry, infer the Brand (e.g. Blue/White/Cera = CeraVe, Minimalist/White/Dropper = The Ordinary).
-        - Describe the visual context (e.g. "White bottle with blue text", "Small dark dropper").
+        PHASE 1: VISUAL SCAN
+        - Identify the BRAND (e.g. La Roche-Posay, Anua, Skintific).
+        - Find the EXACT VARIANT NAME (e.g. "Effaclar Duo+", "Heartleaf 77% Soothing Toner").
+        - Look for SIZE markers (e.g. 30ml, 50g, 1.0 oz).
+        - Identify SUB-LINES (e.g. "Hydrating Line", "Clear Skin Series").
         
-        PHASE 2: TEXT EXTRACTION (Best Effort)
-        - Extract any readable text fragments for the Product Name.
-        - Do not worry about perfection. "Hyalu... B5" is enough context.
+        PHASE 2: TEXT RECONSTRUCTION
+        - Extract even partial text. "Hyalu B5" is high-value.
+        - Read skin type targets written on the bottle (e.g. "For Oily Skin", "Peaux Grasse").
         
-        PHASE 3: INGREDIENTS
-        - Are full ingredients visible? (Back of bottle usually).
-        - If yes, extract them into 'detectedIngredients'.
-        - If no, leave empty.
+        PHASE 3: FORMULATION CLUES
+        - Are actives listed on the front? (e.g. "10% Niacinamide").
+        - If the back is visible, extract the FULL INGREDIENTS (INCI).
         
-        OUTPUT JSON:
+        OUTPUT FORMAT (Strict JSON):
         { 
             "brand": "string", 
-            "name": "string (Guessed Name or Text Fragments)", 
-            "visualContext": "string (e.g. Blue pump bottle)",
-            "hasReadableIngredients": boolean,
+            "commercialName": "string (The EXACT variant name as sold in Sephora/Watsons)", 
+            "variantMarkers": ["string (e.g. SPF50, 30ml, Night)"],
+            "visualCues": "string (e.g. Blue pump bottle, silver cap)",
+            "rawText": ["string (all readable fragments)"],
             "detectedIngredients": ["string"] 
         }
         `;
@@ -253,45 +254,45 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
 
         const visionData = parseJSONFromText(visionResponse.text || "{}");
 
-        if (!visionData.name || visionData.name === "Unknown") {
-            throw new Error("Could not identify product. Please try scanning closer.");
+        if (!visionData.commercialName || visionData.commercialName === "Unknown") {
+            throw new Error("Product not clearly identified. Please ensure brand and product names are visible.");
         }
 
-        console.log("Vision Output:", visionData);
+        console.log("Robust Vision Output:", visionData);
 
-        // STEP 2: AUTHORITY CHECK & REFINEMENT
-        // We now have a "clue" (visionData). We ask Gemini to be the authority and standardize this.
+        // STEP 2: CANONICAL AUTHORITY CHECK
+        // We take the "raw clues" and ask Gemini to map them to a real-world product database entry.
         
         const refinementPrompt = `
         CONTEXT:
-        Vision Output: "${visionData.brand} - ${visionData.name}"
-        Visual Context: "${visionData.visualContext}"
+        Identified Brand: "${visionData.brand}"
+        Identified Variant: "${visionData.commercialName}"
+        Variant Markers: ${JSON.stringify(visionData.variantMarkers)}
+        Visual Description: "${visionData.visualCues}"
         Detected Ingredients (OCR): ${JSON.stringify(visionData.detectedIngredients || [])}.
         
-        USER METRICS: ${JSON.stringify(userMetrics)}
+        USER SKIN METRICS: ${JSON.stringify(userMetrics)}
 
         TASK:
-        1. **IDENTIFICATION & NORMALIZATION (CRITICAL)**: 
-           - You are the Product Authority. The vision output might be partial (e.g. "Anua Soothing Toner") or contain typos.
-           - Identify the EXACT, CANONICAL product. 
-           - **HANDLE VARIATIONS**: Consider regional names, reformulations, and aliases (e.g. "Advanced Night Repair" vs "ANR", "CeraVe Foaming Cleanser" vs "CeraVe Foaming Facial Cleanser").
-           - If the name is ambiguous, use the 'Visual Context' (e.g. bottle color) to disambiguate.
+        1. **EXACT MATCH (CRITICAL)**: Map these clues to the EXACT, CURRENT commercial version of this product. 
+           - Do not generalize (e.g. if the clue is "Effaclar Mat", do not return "Effaclar Duo").
+           - Use the "Variant Markers" to distinguish between versions (e.g. Cream vs Gel, SPF 30 vs 50).
            
-        2. **INGREDIENT RETRIEVAL**: 
-           - IF the OCR ingredients above are comprehensive (>5 items) and look accurate, use them.
-           - IF OCR is empty, partial, or looks like noise, RETRIEVE the standard INCI list from your internal database for this exact product.
-           - **PRIORITIZE INTERNAL KNOWLEDGE** if the OCR looks messy or incomplete.
+        2. **RELIABLE INGREDIENT RETRIEVAL**: 
+           - IF OCR ingredients are partial, RETRIEVE the official INCI list from your database for this EXACT product variant.
+           - Ensure the ingredient list is for the CURRENT version of the formula.
         
-        3. **ANALYSIS**:
-           - Analyze suitability for the user's skin metrics.
+        3. **CLINICAL ANALYSIS**:
+           - Calculate a suitability score (0-99) for the user's skin. 
+           - Penalize heavily if the variant is explicitly wrong for the skin type (e.g. "Rich Cream" for "Highly Oily Skin").
 
-        OUTPUT JSON:
+        OUTPUT FORMAT (Strict JSON):
         {
-            "name": "string (Correct Full Commercial Name)",
-            "brand": "string (Correct Brand)",
+            "name": "string (Full EXACT Commercial Name, e.g. La Roche-Posay Effaclar Mat)",
+            "brand": "string (Standardized Brand Name)",
             "type": "CLEANSER" | "TONER" | "SERUM" | "MOISTURIZER" | "SPF" | "TREATMENT" | "FOUNDATION" | "OTHER",
             "ingredients": ["string"],
-            "ingredientsSource": "OCR" | "KNOWLEDGE_BASE", 
+            "ingredientsSource": "KNOWLEDGE_BASE_CANONICAL", 
             "estimatedPrice": Number,
             "suitabilityScore": Number,
             "risks": [{ "ingredient": "Name", "riskLevel": "HIGH", "reason": "Why" }],
@@ -307,12 +308,14 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
 
         const data = parseJSONFromText(finalResponse.text || "{}");
         
-        if (!data.name) throw new Error("Analysis failed during refinement.");
+        if (!data.name || data.name.toLowerCase().includes("unknown")) {
+             throw new Error("Normalization failed. Identity could not be verified.");
+        }
 
         return {
             id: Date.now().toString(),
             name: data.name,
-            brand: data.brand || visionData.brand, // Fallback to vision brand if refinement misses it
+            brand: data.brand || visionData.brand,
             type: data.type || "UNKNOWN",
             ingredients: data.ingredients || [],
             estimatedPrice: data.estimatedPrice || 0,
@@ -322,7 +325,7 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
             dateScanned: Date.now()
         };
 
-    }, getFallbackProduct(userMetrics, "Scanned Product"), 60000); 
+    }, getFallbackProduct(userMetrics, "Scanning..."), 60000); 
 };
 
 export const auditProduct = (product: Product, user: UserProfile) => {
