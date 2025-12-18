@@ -1,5 +1,5 @@
 {
-  "name": "New SkinOS (backup 8.3)",
+  "name": "Skintech (Production)",
   "description": "Advanced dermatological assistant using computer vision and AI to analyze skin health, scan product ingredients, and manage routine safety.",
   "requestFramePermissions": [
     "camera"

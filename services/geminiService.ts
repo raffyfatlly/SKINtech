@@ -91,7 +91,7 @@ export const searchProducts = async (query: string): Promise<{ name: string, bra
         `;
         
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -119,7 +119,7 @@ export const analyzeFaceSkin = async (image: string, localMetrics: SkinMetrics, 
         Return JSON with fields: overallScore, acneActive, acneScars, poreSize, blackheads, wrinkleFine, wrinkleDeep, sagging, pigmentation, redness, texture, hydration, oiliness, darkCircles, skinAge, analysisSummary (string), observations (map of metric key to string observation).`;
         
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: {
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: image.split(',')[1] } },
@@ -172,7 +172,7 @@ export const analyzeProductFromSearch = async (productName: string, userMetrics:
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                  responseMimeType: 'application/json'
@@ -241,7 +241,7 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
         `;
 
         const visionResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: {
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } },
@@ -300,7 +300,7 @@ export const analyzeProductImage = async (base64: string, userMetrics: SkinMetri
         `;
 
         const finalResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: refinementPrompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -436,7 +436,7 @@ export const getClinicalTreatmentSuggestions = (user: UserProfile) => {
 
 export const createDermatologistSession = (user: UserProfile, shelf: Product[]): Chat => {
     return ai.chats.create({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         config: {
              systemInstruction: `You are a helpful dermatologist. User metrics: ${JSON.stringify(user.biometrics)}. Shelf: ${JSON.stringify(shelf.map(p => p.name))}.`
         }
@@ -528,7 +528,7 @@ export const generateRoutineRecommendations = async (user: UserProfile): Promise
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: { responseMimeType: 'application/json' }
         });
